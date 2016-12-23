@@ -200,7 +200,7 @@
     src: mysql/percona1.cnf
     dest: "{{ mysql_config }}"
   when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona1 }}'"
-  tags: configuration#
+  tags: configuration
 
 - name: Change grastate to safe_to_bootstrap
   lineinfile:
