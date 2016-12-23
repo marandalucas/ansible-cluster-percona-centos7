@@ -1,0 +1,65 @@
+
+---
+
+configured_obs:
+    - ch
+    - mx
+
+ob_data:
+    ch:
+      apache:
+        http_port: 80
+        domain: chile.com
+
+    br:
+      apache:
+        http_port: 81
+        domain: brazil.com
+
+######################## GLOBAL PARAMETER IN ALL OBS #############################
+hosts_backend:
+    - '127.0.0.1   localhost'
+    - '::1         localhost'
+    - '172.0.0.1'
+    - '192.168.221.101 br-fe-01'
+    - '192.168.221.102 ch-fe-01'
+
+hosts_frontend:
+    - '127.0.0.1   localhost'
+    - '::1         localhost'
+    - '192.168.221.101 br-fe-01'
+    - '192.168.221.102 ch-fe-01'
+
+hosts_database:
+    - '127.0.0.1   localhost'
+    - '::1         localhost'
+    - '192.168.221.101 br-fe-01'
+    - '192.168.221.102 ch-fe-01'
+    - '192.168.221.103 percona1'
+    - '192.168.221.104 percona2'
+    - '192.168.221.105 percona3'
+
+dns:
+    - '8.8.8.8'
+
+ntp_debian:
+    - '0.debian.pool.ntp.org iburst'
+    - '1.debian.pool.ntp.org iburst'
+    - '2.debian.pool.ntp.org iburst'
+    - '3.debian.pool.ntp.org iburst'
+
+ntp_centos:
+    - '0.debian.pool.ntp.org iburst'
+    - '1.debian.pool.ntp.org iburst'
+    - '2.debian.pool.ntp.org iburst'
+    - '3.debian.pool.ntp.org iburst'
+proxy:
+    package: ''
+    csb_http: ''
+    csb_https: ''
+    mail: ''
+
+percona_cluster:
+    percona1: '192.168.221.103'
+    percona2: '192.168.221.104'
+    percona3: '192.168.221.105'

@@ -1,0 +1,14 @@
+[frontend-apache]
+Frontend-01-Brazil ansible_ssh_host=192.168.221.101 ansible_ssh_user=vagrant
+Frontend-01-Chile ansible_ssh_host=192.168.221.102 ansible_ssh_user=vagrant
+
+[backend-mysql]
+Percona1 ansible_ssh_host=192.168.221.103 ansible_ssh_user=vagrant
+Percona2 ansible_ssh_host=192.168.221.104 ansible_ssh_user=vagrant
+Percona3 ansible_ssh_host=192.168.221.105 ansible_ssh_user=vagrant
+
+[brazil]
+Frontend-01-Brazil ansible_ssh_host=192.168.221.101 ansible_ssh_user=vagrant
+
+[chile]
+Frontend-01-Chile ansible_ssh_host=192.168.221.102 ansible_ssh_user=vagrant

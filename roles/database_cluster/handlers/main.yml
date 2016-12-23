@@ -1,0 +1,16 @@
+---
+
+- name: restart mysql
+  service:
+    name: mysql
+    state: restarted
+
+- name: restart mysql@bootstrap
+  service:
+    name: "mysql@bootstrap"
+    state: restarted
+
+- name: restart iptables
+  service:
+    name: iptables
+    state: restarted

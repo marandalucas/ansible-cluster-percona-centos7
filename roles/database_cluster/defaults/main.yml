@@ -1,0 +1,11 @@
+---
+
+mysql_config: /etc/my.cnf
+mysql_root_password: 'Julio2016!'
+mysql_name_user: 'root'
+mysql_port: 3306
+mysql_user_sst: 'sstuser'
+mysql_password_sst: 'mypass@'
+
+selinux_policy: targeted
+selinux_state: disabled

@@ -1,0 +1,262 @@
+---
+- name: Configure hosts files
+  template: src=hosts
+            dest=/etc/hosts
+            mode=0644
+            owner=root
+            group=root
+  tags: installation
+
+- name: Delete requiretty from sudoers to be able to use systemd
+  lineinfile: dest=/etc/sudoers
+              state=absent
+              line="Defaults    requiretty"
+  tags: installation
+
+- name: Disable CentOS services from boot startup
+  service: name={{ item }}
+           enabled=no
+  with_items:
+      - avahi-daemon
+      - firewalld
+      - chronyd
+  tags: installation
+
+- name: Ensure some software is uninstalled
+  yum: name={{ item }}
+       state=absent
+  with_items:
+      - mariadb-libs
+      - mariadb
+      - MySQL-python
+  tags: installation
+
+- name: Install Percona Repository and epel-release
+  yum:  name={{ item }}
+        state=present
+  with_items:
+      - http://www.percona.com/downloads/percona-release/redhat/0.1-3/percona-release-0.1-3.noarch.rpm
+      - epel-release
+  tags: installation
+
+- name: Ensure some base packages are updated
+  yum:  name={{ item }}
+        state=present
+  with_items:
+      - ntp
+      - iptables-services
+      - wget
+      - net-tools
+      - socat
+      - telnet
+  tags: installation
+
+- name: Configure iptables for services
+  template: src=iptables
+        dest=/etc/sysconfig/iptables
+        owner=root
+        group=root
+  tags: installation
+
+- name: Restart iptables to apply previous changes
+  service: name=iptables
+           state=restarted
+  tags: installation
+
+- name: Ensure Percona-XtraDB-Cluster-server software is installed
+  yum: name={{ item }}
+       state=present
+  with_items:
+      - Percona-XtraDB-Cluster-server-56
+      - Percona-XtraDB-Cluster-client-56
+      - Percona-XtraDB-Cluster-shared-56
+      - percona-toolkit
+      - percona-xtrabackup
+      - Percona-XtraDB-Cluster-galera-3
+      - rsync
+      - nc
+  tags: installation
+
+- name: Started mysql daemon
+  service: name=mysql
+           state=started
+  tags: installation
+
+- name: python mysqldb module is required now install it
+  yum: name=MySQL-python
+       state=present
+  tags: installation
+
+- name: Ensure that /var/lib/mysql directory exists
+  file: path=/var/lib/mysql
+        state=directory
+  tags: installation
+
+- name: Started mysql daemon
+  service: name=mysql
+           state=started
+  tags: installation
+
+- name: update mysql root password for all root accounts
+  mysql_user:
+    name: "{{ mysql_name_user }}"
+    host: "{{ item }}"
+    password: "{{ mysql_root_password }}"
+    login_user: "{{ mysql_name_user }}"
+    login_password: "{{ mysql_root_password }}"
+    check_implicit_admin: yes
+    priv: "*.*:ALL,GRANT"
+  with_items:
+    - "{{ ansible_ssh_host }}"
+    - localhost
+  tags: installation
+
+- name: Remove the test database
+  mysql_db:
+    login_user: "{{ mysql_name_user }}"
+    login_password: "{{ mysql_root_password }}"
+    name: test
+    state: absent
+  tags: installation
+
+- name: Remove anonymous users
+  mysql_user:
+    login_user: "{{ mysql_name_user }}"
+    login_password: "{{ mysql_root_password }}"
+    user: "{{ mysql_name_user }}"
+    name: ''
+    host: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ ansible_ssh_host }}"
+    - localhost
+  tags: installation
+
+- name: Create new user sstuser
+  mysql_user:
+    name: "{{ mysql_user_sst }}"
+    host: "{{ item }}"
+    password: "{{ mysql_password_sst }}"
+    login_user: "{{ mysql_name_user }}"
+    login_password: "{{ mysql_root_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+  with_items:
+    - "{{ ansible_ssh_host }}"
+    - localhost
+  tags: installation
+
+- name: Check if selinux-policy is installed
+  command: rpm -q selinux-policy
+  register: rpm_check
+  failed_when: false
+  changed_when: no
+  tags: installation
+
+- name: Check if libselinux is installed
+  command: rpm -q libselinux-python
+  register: rpm_check_python
+  failed_when: false
+  changed_when: no
+  tags: installation
+
+- name: Install libselinux-python bindings
+  yum: name=libselinux-python state=present
+  tags: installation
+  when: rpm_check_python.stdout.find('is not installed') != -1
+
+- name: Check Disabled SELinux
+  selinux: state={{ selinux_state }}
+  register: st
+  tags: installation
+
+- name: reboot if SELinux changed
+  shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+  async: 1
+  poll: 0
+  sudo: true
+  ignore_errors: true
+  when: st.changed
+  tags: installation
+
+- name: waiting for server to reboot
+  local_action: wait_for host={{ ansible_ssh_host }} state=started delay=30 timeout=300
+  sudo: false
+  when: st.changed
+  tags: installation
+
+- name: Stop all mysql daemon
+  service: name=mysql
+           state=stopped
+  tags: configuration
+
+- name: Stop all mysql daemon mysql@bootstrap.service in Percona1
+  service: name=mysql@bootstrap.service
+           state=stopped
+  tags: configuration
+
+- name: Install config file to Percona1
+  template:
+    src: mysql/percona1.cnf
+    dest: "{{ mysql_config }}"
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona1 }}'"
+  tags: configuration#
+
+- name: Change grastate to safe_to_bootstrap
+  lineinfile:
+    dest: /var/lib/mysql/grastate.dat
+    regexp: 'safe_to_bootstrap: 0'
+    line: 'safe_to_bootstrap: 1'
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona1 }}'"
+  tags: configuration
+
+- name: Install config file to Percona2
+  template:
+    src: mysql/percona2.cnf
+    dest: "{{ mysql_config }}"
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona2 }}'"
+  tags: configuration
+- name: Install config file to Percona3
+  template:
+    src: mysql/percona3.cnf
+    dest: "{{ mysql_config }}"
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona3 }}'"
+  tags: configuration
+
+- name: Start mysql daemon in Percona1 with Bootstrap.service
+  service: name=mysql@bootstrap.service
+           state=started
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona1 }}'"
+  tags: configuration
+
+- name: Start mysql daemon in Percona2
+  service: name=mysql
+           state=started
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona2 }}'"
+  tags: configuration
+
+- name: Start mysql daemon in Percona3
+  service: name=mysql
+           state=started
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona3 }}'"
+  tags: configuration
+
+- name: Ensure some services are enabled in Percona1
+  service:  name={{ item.service }}
+            enabled={{ item.enabled }}
+  with_items:
+      - { service: 'iptables', enabled: 'yes' }
+      - { service: 'mysql', enabled: 'yes' }
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona1 }}'"
+  tags: configuration
+
+- name: Ensure some services are started and enabled in Percona2 and Percona3
+  service:  name={{ item.service }}
+            enabled={{ item.enabled }}
+            state={{ item.state }}
+  with_items:
+      - { service: 'iptables', enabled: 'yes', state: 'started' }
+      - { service: 'mysql', enabled: 'yes', state: 'started' }
+  when: "'{{ ansible_ssh_host }}' == '{{ percona_cluster.percona2 }}' or
+        '{{ ansible_ssh_host }}' == '{{ percona_cluster.percona3 }}'"
+  tags: configuration

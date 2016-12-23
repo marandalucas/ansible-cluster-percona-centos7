@@ -1,0 +1,5 @@
+---
+- hosts: backend-mysql
+  sudo: yes
+  roles:
+    - database_cluster

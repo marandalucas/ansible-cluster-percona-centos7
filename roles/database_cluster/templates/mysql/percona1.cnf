@@ -1,0 +1,27 @@
+# Template my.cnf for PXC
+# Edit to your requirements.
+
+[mysqld]
+
+binlog_format                  = ROW
+innodb_buffer_pool_size        = 100M
+innodb_flush_log_at_trx_commit = 0
+innodb_flush_method            = O_DIRECT
+innodb_log_files_in_group      = 2
+innodb_log_file_size           = 20M
+innodb_file_per_table          = 1
+datadir                        = /var/lib/mysql
+
+wsrep_cluster_address          = gcomm://
+wsrep_provider                 = /usr/lib64/galera3/libgalera_smm.so
+
+wsrep_slave_threads            = 8
+wsrep_cluster_name             = Cluster_Percona_XtraDB
+wsrep_node_name                = percona1
+
+wsrep_node_address             = {{ percona_cluster.percona1 }}
+wsrep_sst_method               = xtrabackup-v2
+wsrep_sst_auth                 = {{ mysql_user_sst}}:{{ mysql_password_sst }}
+
+innodb_locks_unsafe_for_binlog = 1
+innodb_autoinc_lock_mode       = 2
